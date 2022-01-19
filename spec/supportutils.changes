@@ -1,12 +1,254 @@
 -------------------------------------------------------------------
-Fri Jul  5 13:14:36 UTC 2019 - jason.record@suse.com
+Mon Jan 10 22:35:23 UTC 2022 - Jason Record <jason.record@suse.com>
+
+- Changes to version 3.1.19
+  + Made /proc directory and network names spaces configurable (bsc#1193868)
+
+-------------------------------------------------------------------
+Wed Dec 15 13:28:40 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Changes to version 3.1.19
+  + Removed chronyc DNS lookups with -n switch (bsc#1193732)
+
+-------------------------------------------------------------------
+Wed Nov 17 13:56:16 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Merged Include udev rules in /lib/udev/rules.d/ #113
+- Merged Move localmessage/warm logs out of messages.txt to new localwarn.txt #87
+
+-------------------------------------------------------------------
+Mon Oct 18 21:20:28 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- getappcore identifies compressed core files (bsc#1191794)
+
+-------------------------------------------------------------------
+Mon Oct  4 17:38:56 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Installing to /usr/sbin instead of /sbin (bsc#1191096)
+- Added shared memory as a log directory for emergency use (bsc#1190943)
+
+-------------------------------------------------------------------
+Wed Sep  8 18:18:08 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Fixed cron package for RPM validation (bsc#1190315)
+- Updated spec file with correct URL
+
+-------------------------------------------------------------------
+Mon Aug 16 14:40:50 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Changes to version 3.1.18
+  + Added email.txt based on OPTION_EMAIL #108 (bsc#1189028)
+  + Include 'multipath -t' output in mpio.txt #105
+  + Improved lsblk readability with --ascsi #106
+  + Removed duplicate commands in network.txt
+  + Remove duplicate firewalld status output #109
+
+-------------------------------------------------------------------
+Tue Jul  6 17:58:52 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Changes to version 3.1.17
+  + Adding ethtool options g l m to network.txt (jsc#SLE-18240)
+
+-------------------------------------------------------------------
+Mon Jun  7 17:38:22 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Changes to version 3.1.16
+  + lsof options to improve performance (bsc#1186687)
+
+-------------------------------------------------------------------
+Thu May 27 15:15:04 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Fixes to supportconfig
+  + Exclude rhn.conf from etc.txt (bsc#1186347)
+
+-------------------------------------------------------------------
+Mon May 24 22:01:43 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- analyzevmcore supports local directories (bsc#1186397)
+
+-------------------------------------------------------------------
+Wed May 12 20:43:16 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- getappcore checks for valid compression binary (bsc#1185991)
+- getappcore does not trigger errors with help message (bsc#1185993)
+
+-------------------------------------------------------------------
+Mon Apr 19 17:05:13 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Additions to version 3.1.15
+  + Checks package signatures in rpm.txt (bsc#1021918)
+  + Optimize find (bsc#1184912)
+- Using zypper --xmlout (bsc#1181351)
+- Error fix for sysfs.txt (bsc#1089870)
+
+-------------------------------------------------------------------
+Thu Apr 15 18:14:10 UTC 2021 - Jason Record <jason.record@suse.com>
+
+- Additions to version 3.1.15
+  + Added drbd-overview to drbd.txt
+  + Added list-timers to systemd.txt (bsc#1169348)
+  + Including nfs4 in search (bsc#1184829)
+- Minor: Fix a typo (executible -> executable) #99
+- Changed minor wording to loaded module
+
+-------------------------------------------------------------------
+Mon Mar 22 17:25:12 UTC 2021 - jason.record@gmail.com
+
+- [powerpc] Collect dynamic_debug log files for ibmvNIC #98 (bsc#1183826)
+
+-------------------------------------------------------------------
+Thu Mar 11 18:12:31 UTC 2021 - jason.record@gmail.com
+
+- Fixed mismatched taint flags (bsc#1178491)
+- Removed redundant fdisk code that can cause timeout issues (bsc#1181679)
+- Supportconfig processes -f without hanging (bsc#1182904)
+
+-------------------------------------------------------------------
+Wed Mar  3 14:12:42 UTC 2021 - Thorsten Kukuk <kukuk@suse.com>
+
+- Remove net-tools from requires, it does not contain any tool
+  anymore used by supportutils pr#96
+
+-------------------------------------------------------------------
+Tue Mar  2 14:45:38 UTC 2021 - Mike Latimer mlatimer@suse.com
+
+- Collect logs for power specific components (using iprconfig) pr#94 (bsc#1182950)
+  + Additional nvme information
+  + Additional kdump configuration and logs
+
+-------------------------------------------------------------------
+Tue Feb 16 20:10:28 UTC 2021 - jason.record@gmail.com
+
+- Additions to version 3.1.14
+  + [powerpc] Collect logs for power specific components (HNV) pr#88 (bsc#1181911)
+  + Updated pam.txt documentation explaining GDPR
+  + ha.txt: Fix pacemaker.log location for SLE15 pr#90
+  + supportconfig: use readlink /proc/<pid>/cwd to get cwd list instead of lsof pr#91
+  + supportconfig: sssd_info consistency pr#93
+  + Includes NVMe information with OPTION_NVME=1 in nvme.txt (bsc#1176370, SLE-15932)
+
+-------------------------------------------------------------------
+Thu Feb  4 18:44:12 UTC 2021 - jason.record@gmail.com
+
+- No longer truncates boot log (bsc#1181610)
+
+-------------------------------------------------------------------
+Tue Jan 19 12:28:49 UTC 2021 - Thorsten Kukuk <kukuk@suse.com>
+
+- Require the awk, which and sed commands instead of packages to
+  allow alternate implementations on embedded/Edge systems
+
+-------------------------------------------------------------------
+Thu Dec 31 17:15:30 UTC 2020 - jason.record@suse.com
+
+- Additions to version 3.1.13
+  + Added update-alternatives to etc.txt #82
+  + Collects rotated logs with different compression types (bsc#1180478)
+  + Added GPL-2.0-only license tag to spec file
+
+-------------------------------------------------------------------
+Tue Dec  8 21:19:11 UTC 2020 - jason.record@suse.com
+
+- Additions to version 3.1.12
+  + btrfs_info: add -pce argument to qgroup show #80
+  + docker: add /etc/docker/daemon.json contents #81
+
+-------------------------------------------------------------------
+Tue Nov 10 17:25:36 UTC 2020 - jason.record@suse.com
+
+- Additions to version 3.1.12
+  + Capture IBM Power bootlist (SLE-15557)
+  + Fix spelling typos in man pages #78
+  + Collect multipath wwids file #77
+  + Removed unnecessary appname parameter from HTTP upload URL
+  + added aa-status #74
+
+-------------------------------------------------------------------
+Thu Sep  3 14:51:50 UTC 2020 - jason.record@suse.com
+
+- Additions to version 3.1.12
+  + [powerpc] Collect logs for power specific components #72 (bscn#1176895)
+  + supportconfig: fs-btrfs: Add "btrfs device stats" output #73
+
+-------------------------------------------------------------------
+Wed Jul  1 15:22:30 UTC 2020 - jason.record@suse.com
+
+- Additions to version 3.1.11
+  + Changes affecting supportconfig
+    - disk_info: Show discard information in lsblk #70
+    - memory_info: Show VMware memory balloon infomation #71
+
+-------------------------------------------------------------------
+Mon Apr 27 18:04:24 UTC 2020 - jason.record@suse.com
+
+- Addition to version 3.1.10
+  + Changes affecting analyzevmcore
+    - Fixed typo in error message #67
+  + Changes affecting supportconfig
+    - Fixed btrfs errors (bsc#1168894)
+    - Large ntp.txt with binary data (bsc#1169122)
+    - Check btrfs balance status #69
+
+-------------------------------------------------------------------
+Fri Mar 13 20:45:16 UTC 2020 - jason.record@suse.com
+
+- Addition to version 3.1.9
+  + Changes affecting getappcore
+    - Added core file validation (bsc#1166126)
+    - Added -j <PID> to extract core from systemd journal
+    - Capture coredumptctl info in getappcore.log
+  + Changed filename prefixes from nts_ to scc_ (SLE-8702, SLE-6762)
+    - The new prefix references SUSE Customer Center
+
+-------------------------------------------------------------------
+Tue Mar  3 14:22:12 UTC 2020 - jason.record@suse.com
+
+- Addition to version 3.1.8
+  + Changes affecting getappcore
+    - Added -u for HTTPS and -f for FTPES uploads to SUSE FTP servers
+    - Replaced Novell with SUSE FTP servers (bsc#1165475)
+    - Uses /etc/getappcore.conf if present
+  + Changes affecting supportconfig
+    - Added missed Power collection per bsc#1162539
+    - Added zypper patterns output to updates.txt #66
+
+-------------------------------------------------------------------
+Mon Mar  2 16:12:12 UTC 2020 - jason.record@suse.com
+
+- Addition to version 3.1.7
+  + exclude /proc/pagetypeinfo as it can be an expensive operation on some systems (bsc#1162357)
+  + Readded LPM/DLPAR data for Power (bsc#1162539)
+
+-------------------------------------------------------------------
+Thu Nov 21 21:25:20 UTC 2019 - jason.record@suse.com
+
+- Addition to version 3.1.6
+  + Strip trailing commas from process names #64 (bsc#1156837)
+  + Dynamically select compression method (bsc#1145233)
+  + Updated detailed unit information fix in systemd.txt (bsc#1023308)
+  + Fixed supportconig.conf man page with order placement
+  + Include IPv6 routes (bsc#1089877)
+
+-------------------------------------------------------------------
+Fri Oct 18 13:57:37 UTC 2019 - jason.record@suse.com
+
+- Updated to version 3.1.5
+  + Removed root .snapshots directory from full file list (bsc#1154482)
+
+-------------------------------------------------------------------
+Wed Oct 16 01:22:04 UTC 2019 - jason.record@suse.com
 
 - Updated to version 3.1.4
+  + Removed LPM/DLPAR data for POWER (bsc#1111029)
+  + prevent running 'systool -vb memory' by default on systems with 16TB or more #57 (bsc#1127734)
   + Tumbleweed support #50
   + Added zypper orphaned packages check to updates.txt
   + Cpuset listing #52
   + Docker disunite #53 
   + Added sed and gawk to spec requirements (bsc#1137336)
+  + Added nstat to network
+  + Add collection of livepatch information #63
+  + Check for missing ldap.conf file
 
 -------------------------------------------------------------------
 Thu May  9 14:52:29 UTC 2019 - jason.record@suse.com

@@ -1,4 +1,30 @@
-#!/bin/bash
+##############################################################################
+#  supportconfig.rc - Resource file for supportconfig
+#  Copyright (C) 2001-2022 SUSE LLC
+#
+#  Contains supporting functions and variables used by supportconfig and
+#  supportconfig plugins.
+#
+##############################################################################
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; version 2 of the License.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, see <http://www.gnu.org/licenses/>.
+#
+#  Modified: 2022 Jan 07
+#  Authors/Contributors:
+#     Jason Record <jason.record@suse.com>
+#
+##############################################################################
+
 ##############################################################################
 # Supportconfig Supporting Functions
 ##############################################################################
@@ -20,6 +46,7 @@ OPTION_DISK=1
 OPTION_DNS=1
 OPTION_DOCKER=1
 OPTION_DRBD=1
+OPTION_EMAIL=1
 OPTION_ENV=1
 OPTION_ETC=1
 OPTION_HA=1
@@ -35,6 +62,7 @@ OPTION_MPIO=1
 OPTION_NET=1
 OPTION_NFS=1
 OPTION_NTP=1
+OPTION_NVME=1
 OPTION_OCFS2=1
 OPTION_OFILES=1
 OPTION_PRINT=1
@@ -57,6 +85,7 @@ OPTION_UFILES=1
 OPTION_UP=1
 OPTION_WEB=1
 OPTION_X=1
+OPTION_LIVEPATCH=1
 
 ADD_OPTION_FSLIST=0
 ADD_OPTION_LOGS=0
@@ -75,12 +104,13 @@ VAR_OPTION_CONTACT_STOREID=""
 VAR_OPTION_CONTACT_TERMINALID=""
 VAR_OPTION_CUSTOM_ARCH=""
 VAR_OPTION_DMESG=0
+VAR_OPTION_EXHAUSTIVE_MEM=0
 VAR_OPTION_GPG_UID=""
 VAR_OPTION_HBREPORT_DIRS='/var/log /root'
 # reports must have the format hb_report.*\.tar\.bz2 in each directory
-VAR_OPTION_JOURNALCTL_LINE_COUNT=10000
+VAR_OPTION_JOURNALCTL_LINE_COUNT=0
 VAR_OPTION_JOURNALCTL_MAX_BOOTS=10
-VAR_OPTION_LOG_DIRS='/var/log /tmp'
+VAR_OPTION_LOG_DIRS='/var/log /tmp / /dev/shm'
 VAR_OPTION_LINE_COUNT=500
 VAR_OPTION_MSG_MAXSIZE=26214400
 VAR_OPTION_MSG_LINE_COUNT=200000
@@ -93,10 +123,10 @@ VAR_OPTION_UNIQUE_FILE=0
 VAR_OPTION_HEADER_FILE='/usr/lib/supportconfig/header.txt'
 SUSE_UPLOAD_NA_ASERVER='support-ftp.us.suse.com'
 SUSE_UPLOAD_EMEA_ASERVER='support-ftp.emea.suse.com'
-SUSE_UPLOAD_NA_HTTPS="https://${SUSE_UPLOAD_NA_ASERVER}/incoming/upload.php?appname=supportconfig&file={tarball}"
+SUSE_UPLOAD_NA_HTTPS="https://${SUSE_UPLOAD_NA_ASERVER}/incoming/upload.php?file={tarball}"
 SUSE_UPLOAD_NA_FTPES="ftps://${SUSE_UPLOAD_NA_ASERVER}/incoming"
 SUSE_UPLOAD_NA_FTP="ftp://anonymous@${SUSE_UPLOAD_NA_ASERVER}/incoming"
-SUSE_UPLOAD_EMEA_HTTPS="https://${SUSE_UPLOAD_EMEA_ASERVER}/incoming/upload.php?appname=supportconfig&file={tarball}"
+SUSE_UPLOAD_EMEA_HTTPS="https://${SUSE_UPLOAD_EMEA_ASERVER}/incoming/upload.php?file={tarball}"
 SUSE_UPLOAD_EMEA_FTPES="ftps://${SUSE_UPLOAD_EMEA_ASERVER}/incoming"
 SUSE_UPLOAD_EMEA_FTP="ftp://anonymous@${SUSE_UPLOAD_EMEA_ASERVER}/incoming"
 VAR_OPTION_UPLOAD_TARGET="${SUSE_UPLOAD_NA_HTTPS}"
@@ -113,6 +143,7 @@ LIB_DIR='/usr/lib/supportconfig'
 SC_RESOURCE_FILE="${LIB_DIR}/resources/supportconfig.rc"
 XPLUGIN_DIR="${LIB_DIR}/plugins"
 CURRENT_SCRIPT=$(basename $0)
+ARCHIVE_PREFIX='scc_'
 unset CONTACT_SRNUM
 UPLOAD_TARBALL=0
 CSFILE=${CURRENT_SCRIPT}.txt
@@ -121,14 +152,23 @@ FSLIST_FILE=fs-files.txt
 FSLIST_ADD_FILE="${LIB_DIR}/additional-files.list"
 BASIC_ENVF=basic-environment.txt
 XML_FILE=summary.xml
-COMPRESS="txz"
-COMPRESS_OPT="Jcf"
+# Select compression method
+if [[ -x "/usr/bin/xz" ]]; then
+	COMPRESS="txz"
+	COMPRESS_OPT="Jcf"
+elif [[ -x "/usr/bin/bzip2" ]]; then
+	COMPRESS="tbz"
+	COMPRESS_OPT="jcf"
+else
+	COMPRESS="tgz"; 
+	COMPRESS_OPT="zcf"
+fi
 SC_SRV=$(hostname) # %s
 test "$SC_SRV" = "" && SC_SRV=suse
 SC_DATE=$(date +"%y%m%d") # %d
 SC_TIME=$(date +"%H%M") # %t
 test -x /usr/bin/uuidgen && SC_UID="$(uuidgen 2>/dev/null)" || SC_UID="$(mktemp -u XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX)" # %u
-BASE="nts_%B"
+BASE="${ARCHIVE_PREFIX}%B"
 ARCH=$(uname -i)
 SAVE_LOGS_ONLY=0
 USE_SAVED_LOGS_ONLY=0
@@ -138,6 +178,14 @@ eval $(cat /etc/sysconfig/bootloader | grep LOADER_TYPE)
 # If environment is systemd, /sbin/init should be a symlink to systemd
 file /sbin/init | grep "systemd" &>/dev/null && SYSTEMD=1 || SYSTEMD=0
 IO_DELAYS=0
+
+PROC_FILES="/proc/mounts /proc/zoneinfo"
+PROC_DIRS_DEPTH_ONE="/proc/sys/kernel/ /proc/scsi/ /proc/net/ /proc/dasd/"
+PROC_DIRS_DEPTH_FULL="/proc/irq/ /proc/sys/"
+PROC_DIRS_DEPTH_ONE_FILTER_OUT="rt_acct$|/sched_domain/"
+PROC_DIRS_DEPTH_FULL_FILTER_OUT="fs/binfmt_misc/register|net/ipv4/route/flush|net/ipv6/route/flush|vm/compact_memory|base_reachable_time|scan_unevictable_pages|/sched_domain/"
+
+INCLUDE_NETWORK_NAMESPACES=1
 
 # These are minimum options and should never be unset.
 MIN_OPTION_RPM=1
@@ -430,7 +478,7 @@ log_cmd() {
 		wait_trace_off
 	else
 		echo "# $CMDLINE_ORIG" >> $LOGFILE
-		echo "ERROR: Command not found or not executible" >> $LOGFILE
+		echo "ERROR: Command not found or not executable" >> $LOGFILE
 		EXIT_STATUS=1
 	fi
 	echo >> $LOGFILE
@@ -514,7 +562,7 @@ TEOF
 		wait_trace_off
 	else
 		echo "# $CMDLINE_ORIG" >> $LOGFILE
-		echo "ERROR: Command not found or not executible" >> $LOGFILE
+		echo "ERROR: Command not found or not executable" >> $LOGFILE
 		EXIT_STATUS=1
 	fi
 	echo >> $LOGFILE
@@ -767,7 +815,7 @@ exec_plugins() {
 					fi
 				fi
 			else
-				log_write $PLUGIN_LOG_FILE "ERROR: Missing or non-executible plugin"
+				log_write $PLUGIN_LOG_FILE "ERROR: Missing or non-executable plugin"
 				((PLUGIN_ERROR++))
 			fi
 			log_write $PLUGIN_LOG_FILE

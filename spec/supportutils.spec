@@ -1,7 +1,7 @@
 #
 # spec file for package supportutils
 #
-# Copyright (c) 2018 SUSE LINUX GmbH, Nuernberg, Germany.
+# Copyright (c) 2018-2021 SUSE LINUX GmbH, Nuernberg, Germany.
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -19,23 +19,22 @@
 %define support_libdir /usr/lib/supportconfig
 
 Name:           supportutils
-Version:        3.1.4
+Version:        3.1.19
 Release:        0
 Summary:        Support Troubleshooting Tools
-License:        GPL-2.0
+License:        GPL-2.0-only
 Group:          System/Monitoring
-Url:            https://github.com/g23guy/supportutils
+Url:            https://github.com/openSUSE/supportutils
 Source:         %{name}-%{version}.tar.gz
 Requires:       iproute2
 Requires:       kmod-compat
 Requires:       ncurses-utils
-Requires:       net-tools
 Requires:       sysfsutils
 Requires:       tar
 Requires:       util-linux-systemd
-Requires:       which
-Requires:       sed
-Requires:       gawk
+Requires:       /usr/bin/which
+Requires:       /usr/bin/sed
+Requires:       /usr/bin/awk
 Provides:       supportconfig-plugin-icommand
 Provides:       supportconfig-plugin-resource
 Provides:       supportconfig-plugin-tag
@@ -55,18 +54,17 @@ gzip -9f man/*8
 
 %install
 pwd;ls -la
-install -d %{buildroot}/sbin
-install -d %{buildroot}/etc
+mkdir -p %{buildroot}%{_sbindir}
 install -d %{buildroot}%{_mandir}/man3
 install -d %{buildroot}%{_mandir}/man5
 install -d %{buildroot}%{_mandir}/man8
 install -d %{buildroot}%{support_libdir}/resources
 install -d %{buildroot}%{support_libdir}/plugins
 install -d %{buildroot}%{_docdir}/%{name}
-install -m 544 bin/supportconfig %{buildroot}/sbin
-install -m 544 bin/chkbin %{buildroot}/sbin
-install -m 544 bin/getappcore %{buildroot}/sbin
-install -m 544 bin/analyzevmcore %{buildroot}/sbin
+install -m 544 bin/supportconfig %{buildroot}%{_sbindir}
+install -m 544 bin/chkbin %{buildroot}%{_sbindir}
+install -m 544 bin/getappcore %{buildroot}%{_sbindir}
+install -m 544 bin/analyzevmcore %{buildroot}%{_sbindir}
 install -m 444 bin/scplugin.rc %{buildroot}%{support_libdir}/resources
 install -m 444 bin/supportconfig.rc %{buildroot}%{support_libdir}/resources
 install -m 644 man/*.3.gz %{buildroot}%{_mandir}/man3
@@ -76,10 +74,10 @@ install -m 644 man/COPYING.GPLv2 %{buildroot}%{_docdir}/%{name}
 
 %files
 %defattr(-,root,root)
-/sbin/supportconfig
-/sbin/chkbin
-/sbin/getappcore
-/sbin/analyzevmcore
+%{_sbindir}/supportconfig
+%{_sbindir}/chkbin
+%{_sbindir}/getappcore
+%{_sbindir}/analyzevmcore
 %dir %{support_libdir}
 %dir %{support_libdir}/resources
 %dir %{support_libdir}/plugins
