@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SVER='3.1.11-29'
-SDATE='2022 01 10'
+SVER='3.1.11-29.1'
+SDATE='2022 02 02'
 
 ##############################################################################
 #  supportconfig - Gathers system troubleshooting information for SUSE Support
@@ -45,6 +45,7 @@ title() {
 	echo "============================================================================="
 	echo "                     Support Utilities - Supportconfig"
 	echo "                          Script Version: $SVER"
+	echo "                         Library Version: $RCVER"
 	echo "                          Script Date: $SDATE"
 	echo 
 	echo " Detailed system information and logs are collected and organized in a"
@@ -739,12 +740,12 @@ boot_info() {
 		log_cmd $OF "efibootmgr -v"
 	fi
 	if rpm -q s390-tools &> /dev/null; then
-		conf_files $OF /etc/zipl.conf
+		conf_files $OF /etc/zipl.conf /boot/zipl/active_devices.txt /boot/zipl/config
 	fi
 
 	test -e /usr/sbin/mcelog && log_cmd $OF "/usr/sbin/mcelog --ignorenodev --filter --dmi"
 	test -s /var/log/mcelog && { log_cmd $OF "ls -l --time-style=long-iso /var/log/mcelog"; conf_files $OF /var/log/mcelog; }
-	log_cmd $OF 'last -xF | egrep "reboot|shutdown|runlevel|system"'
+	log_cmd $OF 'last -wxF | egrep "reboot|shutdown|runlevel|system"'
 
 	(( SLES_VER >= 120 )) && FILES='/var/log/boot.log' || FILES='/etc/inittab'
 	conf_files $OF /proc/cmdline /etc/sysconfig/kernel $FILES /etc/init.d/boot.local /etc/init.d/before.local /etc/init.d/after.local /etc/init.d/halt.local
@@ -832,41 +833,7 @@ update_info() {
 	SKIP=0
 	TIMEOUT=0
 	addHeaderFile $OF
-	if [ $SLES_VER -lt 110 ] && rpm_verify $OF rug
-	then
-		rpm_verify $OF lsb
-		RUG_VER=$(rpm -q rug | tail -1 | cut -d- -f2 | cut -d\. -f1)
-		log_cmd $OF 'date'
-		if [ $RUG_VER -gt 6 ]; then
-			# Time out as a group, if one rug command fails, all remaining rug commands fail
-			for CMDOPT in prefs '--no-abbrev sl' ca lu pch
-			do
-				if [ $TIMEOUT -ge 10 ]; then
-					log_write $OF "#==[ Command ]======================================#"
-					log_write $OF "# Skipped \"rug $CMDOPT\" due to previous timeout"
-					log_write $OF
-				else
-					timed_log_cmd $OF "rug $CMDOPT"
-					TIMEOUT=$?
-				fi
-			done
-		elif [ $RUG_VER -gt 1 ]; then
-			for CMDOPT in prefs '--no-abbrev sl' ch pl
-			do
-				if [ $TIMEOUT -ge 10 ]; then
-					log_write $OF "#==[ Command ]======================================#"
-					log_write $OF "# Skipped \"rug $CMDOPT\" due to previous timeout"
-					log_write $OF
-				else
-					timed_log_cmd $OF "rug $CMDOPT"
-					TIMEOUT=$?
-				fi
-			done
-		fi
-	fi
-
-	TIMEOUT=0
-	if [ $SLES_VER -ge 110 ] && rpm_verify $OF zypper; then
+	if (( SLES_VER >= 110 )) && rpm_verify $OF zypper; then
 		log_cmd $OF 'date'
 		log_cmd $OF 'ls -lA --time-style=long-iso /etc/products.d/'
 		log_cmd $OF 'zypper locks'
@@ -909,10 +876,9 @@ update_info() {
 	fi
 
 	if rpm_verify $OF suseRegister; then
-		[ $SLES_VER -lt 110 ] && log_cmd $OF 'chkconfig suseRegister --list'
 		FILES='/etc/suseRegister.conf /etc/sysconfig/suse_register'
 		conf_files $OF $FILES
-		if [ -d /var/lib/suseRegister/ ]; then
+		if [[ -d /var/lib/suseRegister/ ]]; then
 			FILES=$(find /var/lib/suseRegister/ -type f)
 			conf_files $OF $FILES
 		fi
@@ -920,7 +886,7 @@ update_info() {
 
 	log_cmd $OF "env | grep -i proxy | grep -v CMDLINE"
 	conf_files $OF /etc/sysconfig/proxy
-	if [ -s /root/.curlrc ]; then
+	if [[ -s /root/.curlrc ]]; then
 		conf_files $OF /root/.curlrc
 		SC_PROXY_PASS=$(grep -i "^proxy-user" /root/.curlrc | sed -e 's/"//g' | awk '{print $3}' | cut -d\: -f2)
 		sed -i -e "s/:${SC_PROXY_PASS}$/:*REMOVED BY SUPPORTCONFIG*/g;s/:${SC_PROXY_PASS}\"$/:*REMOVED BY SUPPORTCONFIG*\"/g" $LOG/$OF
@@ -968,19 +934,19 @@ update_info() {
 
 #zypper
 	FILES=$(find /var/log/ -type f -name \*zypp\*)
-	test $ADD_OPTION_LOGS -gt 0 && log_files $OF 0 $FILES || log_files $OF $VAR_OPTION_LINE_COUNT $FILES
+	(( ADD_OPTION_LOGS > 0 )) && log_files $OF 0 $FILES || log_files $OF $VAR_OPTION_LINE_COUNT $FILES
 
 #suseregister
 	log_files $OF 0 '/root/.suse_register.log'
 	FILES="/var/log/messages"
-	[ $ADD_OPTION_LOGS -gt 0 ] && grep_log_files suse_register $OF 0 $FILES || grep_log_files suse_register $OF $VAR_OPTION_LINE_COUNT $FILES
+	(( ADD_OPTION_LOGS > 0 )) && grep_log_files suse_register $OF 0 $FILES || grep_log_files suse_register $OF $VAR_OPTION_LINE_COUNT $FILES
 
 	if (( SLES_VER >= 120 ))
 	then
 		conf_files $OF '/proc/kgr_in_progress'
 		log_entry $OF note "Processes blocking kGraft patching"
 		FOUND=0
-		for i in $(find /proc -type f | grep -i kgr_in_progress)
+		for i in $(find /proc -type f 2> /dev/null | grep -i kgr_in_progress)
 		do
 			VAL=$(cat $i 2>/dev/null)
 			if [[ -n "$VAL" ]]
@@ -1047,8 +1013,13 @@ sssd_info() {
 			check_service $OF sssd
 		fi
 		conf_files $OF "/etc/nsswitch.conf /etc/sssd/sssd.conf"
+		log_cmd $OF 'ls -lR --time-style=long-iso /etc/sssd/conf.d/'
+		if [[ -d /etc/sssd/conf.d ]]; then
+			FILES=$(find -L /etc/sssd/conf.d/ -type f | egrep "\.conf$")
+			conf_files $OF "$FILES"
+		fi
 		SRVS_LDAP=$(grep "^[[:space:]]*ldap_uri" /etc/sssd/sssd.conf | cut -d= -f2 | sed -e 's/ *//g;s/,/ /g')
-		if [ -n "$SRVS_LDAP" ]; then
+		if [[ -n "$SRVS_LDAP" ]]; then
 			for URI in $SRVS_LDAP
 			do
 				ADDR=$(echo $URI | awk -F\/ '{print $NF}' | cut -d\: -f1)
@@ -1056,7 +1027,7 @@ sssd_info() {
 			done
 		fi
 		SRVS_KRB5=$(egrep "^[[:space:]]*krb5_server|^[[:space:]]*krb5_kdcip" /etc/sssd/sssd.conf | cut -d= -f2 | sed -e 's/ *//g;s/,/ /g')
-		if [ -n "$SRVS_KRB5" ]; then
+		if [[ -n "$SRVS_KRB5" ]]; then
 			for URI in $SRVS_KRB5
 			do
 				ADDR=$(echo $URI | awk -F\/ '{print $NF}' | cut -d\: -f1)
@@ -1066,14 +1037,14 @@ sssd_info() {
 		log_cmd $OF 'date +"%Y-%m-%d %H:%M"'
 		log_cmd $OF 'ls -lR --time-style=long-iso /var/lib/sss/'
 		if (( SLES_VER < 120 )); then
-			[ -s /etc/init.d/sssd ] && SSSD_PIDF=$(grep '^PID_FILE' /etc/init.d/sssd | sed -e 's/ *//g' | cut -d= -f2)
+			[[ -s /etc/init.d/sssd ]] && SSSD_PIDF=$(grep '^PID_FILE' /etc/init.d/sssd | sed -e 's/ *//g' | cut -d= -f2)
 			test -z "$SSSD_PIDF" && SLAPD_PIDF="/var/run/sssd.pid"
-			if [ -f $SSSD_PIDF ]; then
+			if [[ -f $SSSD_PIDF ]]; then
 				SSSD_PID=$(cat $SSSD_PIDF)
 			else
 				SSSD_PID=""
 			fi
-			if [ -n "$SSSD_PID" ]; then
+			if [[ -n "$SSSD_PID" ]]; then
 				SSSD_PIDS=$(ps axwwo pid,ppid,cmd | grep ${SSSD_PID} | grep -v grep | awk '{print $1}' | sort -n)
 				log_cmd $OF "ps axwwo user,pid,ppid,%cpu,%mem,vsz,rss,stat,time,cmd | egrep \"${SSSD_PID}|PPID\" | grep -v grep"
 				for THISPID in $SSSD_PIDS
@@ -1090,9 +1061,9 @@ sssd_info() {
 		fi
 		log_cmd $OF 'grep pam_sss /etc/pam.d/*'
 		FILES="/var/log/sssd/*"
-		[ $ADD_OPTION_LOGS -gt 0 ] && log_files $OF 0 $FILES || log_files $OF $VAR_OPTION_LINE_COUNT $FILES
+		(( ADD_OPTION_LOGS > 0 )) && log_files $OF 0 $FILES || log_files $OF $VAR_OPTION_LINE_COUNT $FILES
 		FILES="/var/log/messages"
-		[ $ADD_OPTION_LOGS -gt 0 ] && grep_log_files ' sssd' $OF 0 $FILES || grep_log_files ' sssd' $OF $VAR_OPTION_LINE_COUNT $FILES
+		(( ADD_OPTION_LOGS > 0 )) && grep_log_files ' sssd' $OF 0 $FILES || grep_log_files ' sssd' $OF $VAR_OPTION_LINE_COUNT $FILES
 		echolog Done
 	else
 		echolog Skipped
@@ -1130,7 +1101,7 @@ environment_info() {
 		log_cmd $OF 'vmcp query files'
 		log_cmd $OF 'vmcp query userid'
 	else
-		case $(uname -i) in
+		case $ARCH in
 		s390x) 
 			log_write $OF "#==[ s390x Hardware Detected ]======================#"
 			log_write $OF "# Consider loading vmcp for more info: modprobe vmcp"
@@ -1215,6 +1186,33 @@ docker_info() {
 		log_cmd $OF 'ls -al --time-style=long-iso /var/lib/docker/containers'
 		log_cmd $OF 'ls -alR --time-style=long-iso /sys/fs/cgroup/*/system.slice/docker*'
 		log_cmd $OF 'journalctl -u docker'
+	fi
+	echolog Done
+}
+
+podman_info() {
+	printlog "Podman..."
+	test $OPTION_PODMAN -eq 0 && { echolog Excluded; return 1; }
+	OF=podman.txt
+	addHeaderFile $OF
+	PODMANSCDIR=$LOG/podman
+	[[ -e /usr/bin/podman ]] && PODMAN_PKG=`rpm -q --whatprovides /usr/bin/podman 2>/dev/null`
+	[[ -z $PODMAN_PKG ]] && PODMAN_PKG='podman'
+	if rpm_verify $OF $PODMAN_PKG
+	then
+		log_cmd $OF 'podman version'
+		log_cmd $OF 'podman info'
+		log_cmd $OF 'podman images'
+		log_cmd $OF 'podman ps --all'
+		log_cmd $OF 'podman network ls'
+		mkdir -p $PODMANSCDIR
+		for container in $(podman ps -a --format "{{.ID}}" 2>/dev/null);
+		do
+			CONTAINEROF=podman/"$container".txt
+			log_cmd $CONTAINEROF "podman top $container"
+			log_cmd $CONTAINEROF "podman inspect $container"
+			log_cmd $CONTAINEROF "podman logs $container"
+		done
 	fi
 	echolog Done
 }
@@ -1537,7 +1535,7 @@ hardware_info() {
 			log_files $OF 0 /tmp/alsa-info.txt
 		fi
 	fi
-	if uname -i | grep ppc64 &> /dev/null #Readded from previous commit, including it now.
+	if grep ppc64 <<< $ARCH &> /dev/null #Readded from previous commit, including it now.
 	then
 		platform=""
 		if grep PowerNV /proc/cpuinfo &> /dev/null; then
@@ -1724,7 +1722,7 @@ net_info_namespace() {
 			log_cmd $OF "vmcp query lan details"
 			log_cmd $OF "vmcp query vswitch detail"
 		else
-			case $(uname -i) in
+			case $ARCH in
 			s390x) 
 				log_write $OF "#==[ s390x Hardware Detected ]======================#"
 				log_write $OF "# Consider loading vmcp for more info: modprobe vmcp"
@@ -1843,6 +1841,25 @@ net_info_namespace() {
 			log_write $OF
 		fi
 	done
+
+	if rpm_verify $OF nftables
+	then
+		log_cmd $OF "${NS}nft list tables"
+
+		# playing around with IFS is unfortunately necessary here for
+		# properly parsing the 'nft list tables' output and the standard
+		# IFS must be used to avoid breaking the namespace passed to log_cmd
+		SAVEIFS=$IFS
+		IFS=$(echo -ne "\n\b")
+		for NF_TABLE in $(${NS}nft list tables | cut -d\  -f2,3)
+		do
+			IFS=$SAVEIFS
+			log_cmd $OF "${NS}nft list table $NF_TABLE"
+			IFS=$(echo -ne "\n\b")
+		done
+		IFS=$SAVEIFS
+	fi
+
 	if [[ -z "${NS}" ]] ; then
 		test -d /etc/sysconfig/network && FILES=$(find /etc/sysconfig/network/ -maxdepth 1 -type f) || FILES=""
 		conf_files $OF /etc/sysconfig/proxy $FILES 
@@ -1897,10 +1914,14 @@ disk_info() {
 	done
 
 	log_cmd $OF 'ls -lR --time-style=long-iso /dev/disk/'
+        log_cmd $OF 'ls -l --time-style=long-iso /dev/mapper/'
 	log_cmd $OF 'ls -l --time-style=long-iso /sys/block/'
 	log_cmd $OF 'lslocks'
+	log_cmd $OF 'ls -l /dev/disk/by-path/'
+	log_cmd $OF 'ls -l /dev/disk/by-id/'
+	log_cmd $OF 'ls -l /dev/disk/by-uuid/'
 
-	if [ $ADD_OPTION_MINDISK -eq 0 ]; then
+	if [[ $ADD_OPTION_MINDISK -eq 0 ]]; then
 		log_cmd $OF 'iostat -x 1 4'
 		log_cmd $OF 'sg_map -i -x'
 		if [ -d /sys/block ]; then
@@ -1914,7 +1935,7 @@ disk_info() {
 		fi
 
 
-		if [ -n "$IDE_DISKS" -a -d /proc/ide ]; then
+		if [[ -n "$IDE_DISKS" ]] && [[ -d /proc/ide ]]; then
 			log_write $OF "#==[ IDE Detailed Info ]============================#"
 			log_write $OF "#---------------------------------------------------#"
 			FILES=$(find /proc/ide/ -maxdepth 1 -type f 2>/dev/null)
@@ -1930,7 +1951,7 @@ disk_info() {
 			fi
 		fi
 
-		if [ -n "$SCSI_DISKS" ]; then
+		if [[ -n "$SCSI_DISKS" ]]; then
 			log_write $OF "#==[ SCSI Detailed Info ]===========================#"
 			log_write $OF "#---------------------------------------------------#"
 			log_cmd $OF 'lsscsi'
@@ -1953,7 +1974,7 @@ disk_info() {
 			done
 		fi
 
-		if [ -n "$CCISS_DISKS" -a -d /proc/driver/cciss ]; then
+		if [[ -n "$CCISS_DISKS" ]] && [[ -d /proc/driver/cciss ]]; then
 			log_write $OF "#==[ CCISS Detailed Info ]==========================#"
 			log_write $OF "#---------------------------------------------------#"
 			FILES=$(find /proc/driver/cciss/ -maxdepth 1 -type f 2>/dev/null)
@@ -1969,6 +1990,14 @@ disk_info() {
 			fi
 		fi
 	fi
+        if [[ "$ARCH" == "s390x" ]] ; then
+               log_write $OF "#==[ s390x and DASD Info ]==========================#"
+               log_write $OF "#---------------------------------------------------#"
+               log_cmd $OF 'lsdasd -a'
+               log_cmd $OF 'lsdasd --long'
+               log_cmd $OF 'rpm -V s390-tools'
+        fi
+
 	echolog Done
 }
 
@@ -2045,8 +2074,7 @@ iscsi_info() {
 		log_cmd $OF 'systemctl status iscsi.service'
 		log_cmd $OF 'systemctl status iscsid.service'
 		log_cmd $OF 'systemctl status iscsid.socket'
-		log_cmd $OF 'iscsi-iname'
-		conf_files $OF /etc/iscsid.conf
+		conf_files $OF "/etc/iscsi/initiatorname.iscsi /etc/iscsi/iscsid.conf"
 		log_cmd $OF 'iscsiadm -m session'
 		if log_cmd $OF 'iscsiadm -m node'
 		then
@@ -2066,42 +2094,39 @@ nfs_info() {
 	test $OPTION_NFS -eq 0 && { echolog Excluded; return 1; }
 	OF=nfs.txt
 	addHeaderFile $OF
-	if rpm -q nfs-client &>/dev/null; then
-		if rpm_verify $OF nfs-client
+	if rpm_verify $OF nfs-client
+	then
+		rpm_verify $OF rpcbind
+		check_service $OF nfs
+		check_service $OF rpcbind
+		conf_files $OF /etc/sysconfig/nfs
+		log_cmd $OF 'nfsstat'
+		timed_log_cmd $OF 'rpcinfo -p'
+
+		log_cmd $OF "egrep '[[:space:]]nfs[[:space:]]|[[:space:]]nfs4[[:space:]]' /etc/fstab"
+		IPADDRS=$(egrep '[[:space:]]nfs[[:space:]]|[[:space:]]nfs4[[:space:]]' /etc/fstab | egrep -v '^#|^;' | cut -d\: -f1 | sort | uniq)
+		for IPADDR in $IPADDRS
+		do
+			ping_addr $OF 'NFS Server' $IPADDR
+		done
+		for IPADDR in $IPADDRS
+		do
+			log_cmd $OF "showmount -e $IPADDR"
+		done
+
+		if rpm_verify $OF nfs-kernel-server
 		then
-			rpm_verify $OF nfs-kernel-server
-			if (( SLES_VER >= 120 ))
-			then
-				log_cmd $OF "systemctl status nfs.service"
-				log_cmd $OF "systemctl status nfsserver.service"
-				NFS_STATUS=$?
-			else
-				check_service $OF nfs
-				check_service $OF nfsserver
-				NFS_STATUS=$?
-			fi
+			check_service $OF nfsserver
 			log_cmd $OF 'exportfs -v'
-			log_cmd $OF 'nfsstat'
+			conf_files $OF /etc/exports
 			if timed_log_cmd $OF 'showmount'
 			then
 				log_cmd $OF 'showmount -e'
 				log_cmd $OF 'showmount -a'
 			fi
-			conf_files $OF /etc/exports /etc/sysconfig/nfs
-			log_cmd $OF "egrep '[[:space:]]nfs[[:space:]]|[[:space:]]nfs4[[:space:]]' /etc/fstab"
-			IPADDRS=$(egrep '[[:space:]]nfs[[:space:]]|[[:space:]]nfs4[[:space:]]' /etc/fstab | egrep -v '^#|^;' | cut -d\: -f1 | sort | uniq)
-			for IPADDR in $IPADDRS
-			do
-				ping_addr $OF 'NFS Server' $IPADDR
-			done
-			for IPADDR in $IPADDRS
-			do
-				log_cmd $OF "showmount -e $IPADDR"
-			done
-			echolog Done
-		else
-			echolog Skipped
 		fi
+
+		echolog Done
 	else
 		if rpm_verify $OF nfs-utils
 		then
@@ -2234,6 +2259,8 @@ nvme_info() {
 			FILES="/etc/nvme/*"
 			[[ -d /etc/nvme/ ]] && conf_files $OF $FILES
 			[[ -f /etc/nvme/discovery.conf ]] && log_cmd $OF "nvme discover"
+			[[ -f /etc/nvme/hostnqn ]] && log_cmd $OF "nvme hostnqn"
+			[[ -f /sys/module/nvme_core/parameters/multipath ]] && log_cmd $OF "nvme core"
 			NVME_DEVICES=$(nvme list | grep /dev | awk '{print $1}')
 			for NVME_DEVICE in $NVME_DEVICES
 			do
@@ -3303,6 +3330,7 @@ etc_info() {
 	conf_files $OF $(find -L /etc/ -type f | egrep "conf$|cfg$" | egrep -v "rhn/rhn.conf$")
 	[ -d /etc/logrotate.d ] && conf_files $OF /etc/logrotate.d/*
 	conf_files $OF /etc/rc.dialout /etc/ppp/options /etc/ppp/ioptions /etc/ppp/peers/pppoe /etc/motd
+        sed -i -e 's/\(.*pass:\).*/\1 *REMOVED BY SUPPORTCONFIG*/g;s/\(.*password:\).*/\1 *REMOVED BY SUPPORTCONFIG*/g;s/\(.*pass[[:space:]]*=\).*/\1 *REMOVED BY SUPPORTCONFIG*/g;s/\(.*password[[:space:]]*=\).*/\1 *REMOVED BY SUPPORTCONFIG*/g;s/\(.*GPGPASS=\).*/\1*REMOVED BY SUPPORTCONFIG*/g' $LOG/$OF
 	echolog Done
 }
 
@@ -3322,7 +3350,8 @@ sysconfig_info() {
 			conf_files $OF $FILE
 		done
 	done
-	sed -i -e 's/.*_PASSWORD[[:space:]]*=.*/*REMOVED BY SUPPORTCONFIG*/g' $LOG/$OF
+	sed -i -e 's/.*_PASSWORD[[:space:]]*=.*/*REMOVED BY SUPPORTCONFIG*/g;s/.*_password[[:space:]]*=.*/*REMOVED BY SUPPORTCONFIG*/g' $LOG/$OF
+        sed -i -e 's/\(.*pass:\).*/\1 *REMOVED BY SUPPORTCONFIG*/g;s/\(.*password:\).*/\1 *REMOVED BY SUPPORTCONFIG*/g;s/\(.*pass[[:space:]]*=\).*/\1 *REMOVED BY SUPPORTCONFIG*/g;s/\(.*password[[:space:]]*=\).*/\1 *REMOVED BY SUPPORTCONFIG*/g;s/\(.*GPGPASS=\).*/\1*REMOVED BY SUPPORTCONFIG*/g' $LOG/$OF
 	echolog Done
 }
 
@@ -4402,6 +4431,7 @@ if [ "$USE_SAVED_LOGS_ONLY" != "1" ]; then
 	sysfs_info
 	systemd_info
 	docker_info
+	podman_info
 	cron_info
 	udev_info
 	lvm_info

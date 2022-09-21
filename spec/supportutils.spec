@@ -1,7 +1,7 @@
 #
 # spec file for package supportutils
 #
-# Copyright (c) 2018-2021 SUSE LINUX GmbH, Nuernberg, Germany.
+# Copyright (c) 2022 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -15,11 +15,15 @@
 # Please submit bugfixes or comments via http://bugs.opensuse.org/
 #
 
+# ensure usr-merge does not effect existing SLE
+%if %suse_version < 1550
+%define _sbindir /sbin
+%endif
 
 %define support_libdir /usr/lib/supportconfig
 
 Name:           supportutils
-Version:        3.1.19
+Version:        3.1.20
 Release:        0
 Summary:        Support Troubleshooting Tools
 License:        GPL-2.0-only
